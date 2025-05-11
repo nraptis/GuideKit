@@ -66,7 +66,7 @@ public class GuidePartsFactory {
     ///
     ///
     ////////////////
-        
+    
     ////////////////
     ///
     ///
@@ -140,4 +140,29 @@ public class GuidePartsFactory {
     ///
     ///
     ////////////////
+
+    
+    ////////////////
+    ///
+    ///
+    private var directedWeightPoints = [DirectedWeightPoint]()
+    var directedWeightPointCount = 0
+    public func depositDirectedWeightPoint(_ directedWeightPoint: DirectedWeightPoint) {
+        while directedWeightPoints.count <= directedWeightPointCount {
+            directedWeightPoints.append(directedWeightPoint)
+        }
+        directedWeightPoints[directedWeightPointCount] = directedWeightPoint
+        directedWeightPointCount += 1
+    }
+    public func withdrawDirectedWeightPoint() -> DirectedWeightPoint {
+        if directedWeightPointCount > 0 {
+            directedWeightPointCount -= 1
+            return directedWeightPoints[directedWeightPointCount]
+        }
+        return DirectedWeightPoint()
+    }
+    ///
+    ///
+    ////////////////
+    
 }

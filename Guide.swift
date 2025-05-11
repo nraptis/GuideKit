@@ -62,9 +62,9 @@ public class Guide: WeightCurveControlPointOwning {
     
     public var totalSplineLength = Float(0.0)
     
-    public var processPoints = [GuideWeightPoint]()
+    public var processPoints = [DirectedWeightPoint]()
     public var processPointCount = 0
-    public func addProcessPoint(_ point: GuideWeightPoint) {
+    public func addProcessPoint(_ point: DirectedWeightPoint) {
         while processPoints.count <= processPointCount {
             processPoints.append(point)
         }
@@ -74,7 +74,7 @@ public class Guide: WeightCurveControlPointOwning {
         
     public func purgeProcessPoints() {
         for processPointIndex in 0..<processPointCount {
-            GuidePartsFactory.shared.depositGuideWeightPoint(processPoints[processPointIndex])
+            GuidePartsFactory.shared.depositDirectedWeightPoint(processPoints[processPointIndex])
         }
         processPointCount = 0
     }
@@ -180,6 +180,25 @@ public class Guide: WeightCurveControlPointOwning {
         let guideControlPoint = GuidePartsFactory.shared.withdrawGuideControlPoint()
         guideControlPoint.x = x
         guideControlPoint.y = y
+        addGuideControlPoint(guideControlPoint: guideControlPoint,
+                             jiggleDocument: jiggleDocument,
+                             ignoreRealize: ignoreRealize)
+    }
+    
+    @MainActor public func addGuideControlPoint(directedWeightPoint: DirectedWeightPoint,
+                                                jiggleDocument: some SelectedGuidePointListeningConforming,
+                                                ignoreRealize: Bool) {
+        let guideControlPoint = GuidePartsFactory.shared.withdrawGuideControlPoint()
+        guideControlPoint.x = directedWeightPoint.x
+        guideControlPoint.y = directedWeightPoint.y
+        guideControlPoint.isUnifiedTan = directedWeightPoint.isUnifiedTan
+        guideControlPoint.isManualTanHandleEnabled = directedWeightPoint.isManualTanHandleEnabled
+        if directedWeightPoint.isManualTanHandleEnabled {
+            guideControlPoint.tanDirectionIn = directedWeightPoint.tanDirectionIn
+            guideControlPoint.tanDirectionOut = directedWeightPoint.tanDirectionOut
+            guideControlPoint.tanMagnitudeIn = directedWeightPoint.tanMagnitudeIn
+            guideControlPoint.tanMagnitudeOut = directedWeightPoint.tanMagnitudeOut
+        }
         addGuideControlPoint(guideControlPoint: guideControlPoint,
                              jiggleDocument: jiggleDocument,
                              ignoreRealize: ignoreRealize)
