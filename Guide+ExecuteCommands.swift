@@ -33,14 +33,10 @@ public extension Guide {
                  lineThicknessType: RenderLineThicknessType,
                  lineThicknessStroke: Float,
                  lineThicknessFill: Float,
-                 tanFactorJiggleControlPoint: Float) {
+                 tanFactor: Float) {
         
         if guideCommand.spline {
-            refreshSpline(tanFactorJiggleControlPoint: tanFactorJiggleControlPoint)
-        } else {
-            if Guide.DEBUG_FLOW {
-                print("(FLOW) {W-Ring \(ObjectIdentifier(self))} SKIPPED Spline: \(currentHashSpline)")
-            }
+            refreshSpline(tanFactor: tanFactor)
         }
         
         var checkHashOutline = OutlineHashGuide()
@@ -60,10 +56,6 @@ public extension Guide {
                            jiggleScale: jiggleScale,
                            jiggleRotation: jiggleRotation,
                            lineThicknessType: lineThicknessType)
-        } else {
-            if Guide.DEBUG_FLOW {
-                print("(FLOW) {W-Ring \(ObjectIdentifier(self))} SKIPPED Outline: \(currentHashOutline)")
-            }
         }
         
         var checkHashSolidLineBufferStandard = SolidLineBufferGuideHash()
@@ -105,10 +97,6 @@ public extension Guide {
                                             lineThicknessType: lineThicknessType,
                                             lineThicknessStroke: lineThicknessStroke,
                                             lineThicknessFill: lineThicknessFill)
-        } else {
-            if Guide.DEBUG_FLOW {
-                print("(FLOW) {W-Ring \(ObjectIdentifier(self))} SKIPPED Solid Line: \(currentHashSolidLineBufferStandard)")
-            }
         }
         
         var checkHashSolidLineBufferPrecise = SolidLineBufferGuideHash()
@@ -148,14 +136,10 @@ public extension Guide {
                                            weightDepthIndex: weightDepthIndex,
                                            guideCount: guideCount,
                                            lineThicknessType: lineThicknessType)
-        } else {
-            if Guide.DEBUG_FLOW {
-                print("(FLOW) {W-Ring \(ObjectIdentifier(self))} SKIPPED Solid Line: \(currentHashSolidLineBufferPrecise)")
-            }
         }
     }
     
-    private func refreshSpline(tanFactorJiggleControlPoint: Float) {
+    private func refreshSpline(tanFactor: Float) {
         
         isBroken = false
         purgeGuideWeightPoints()
@@ -165,34 +149,42 @@ public extension Guide {
         for guideControlPointIndex in 0..<guideControlPointCount {
             let guideControlPoint = guideControlPoints[guideControlPointIndex]
             spline.addControlPoint(guideControlPoint.x, guideControlPoint.y)
-            if guideControlPoint.isManualTanHandleEnabled {
-                let magnitudeIn = guideControlPoint.tanMagnitudeIn / tanFactorJiggleControlPoint
-                let magnitudeOut = guideControlPoint.tanMagnitudeOut / tanFactorJiggleControlPoint
+            
+            
+            if guideControlPoint.isManualTanHandleEnabledIn {
+                let magnitudeIn = guideControlPoint.tanMagnitudeIn / tanFactor
                 let inDirX = sinf(guideControlPoint.tanDirectionIn)
                 let inDirY = -cosf(guideControlPoint.tanDirectionIn)
+                spline.enableManualControlTanIn(at: guideControlPointIndex,
+                                                inTanX: -inDirX * magnitudeIn,
+                                                inTanY: -inDirY * magnitudeIn)
+                
+            } else {
+                spline.disableManualControlTanIn(at: guideControlPointIndex)
+            }
+            
+            if guideControlPoint.isManualTanHandleEnabledOut {
+                let magnitudeOut = guideControlPoint.tanMagnitudeOut / tanFactor
                 let outDirX = sinf(guideControlPoint.tanDirectionOut)
                 let outDirY = -cosf(guideControlPoint.tanDirectionOut)
-                spline.enableManualControlTan(at: guideControlPointIndex,
-                                              inTanX: -inDirX * magnitudeIn,
-                                              inTanY: -inDirY * magnitudeIn,
-                                              outTanX: outDirX * magnitudeOut,
-                                              outTanY: outDirY * magnitudeOut)
+                spline.enableManualControlTanOut(at: guideControlPointIndex,
+                                                 outTanX: outDirX * magnitudeOut,
+                                                 outTanY: outDirY * magnitudeOut)
             } else {
-                spline.disableManualControlTan(at: guideControlPointIndex)
+                spline.disableManualControlTanOut(at: guideControlPointIndex)
             }
+            
         }
         
         spline.solve(closed: true)
         
         for guideControlPointIndex in 0..<guideControlPointCount {
             let guideControlPoint = guideControlPoints[guideControlPointIndex]
-            if guideControlPoint.isManualTanHandleEnabled == false {
-                _ = guideControlPoint.attemptAngleFromTansUnified(inTanX: spline.inTanX[guideControlPointIndex],
-                                                                  inTanY: spline.inTanY[guideControlPointIndex],
-                                                                  outTanX: spline.outTanX[guideControlPointIndex],
-                                                                  outTanY: spline.outTanY[guideControlPointIndex],
-                                                                  tanFactorJiggleControlPoint: tanFactorJiggleControlPoint)
-            }
+            guideControlPoint.attemptAngleFromTansUnknown(inTanX: spline.inTanX[guideControlPointIndex],
+                                                          inTanY: spline.inTanY[guideControlPointIndex],
+                                                          outTanX: spline.outTanX[guideControlPointIndex],
+                                                          outTanY: spline.outTanY[guideControlPointIndex],
+                                                          tanFactor: tanFactor)
         }
         
         borderTool.build(spline: spline,
@@ -270,9 +262,6 @@ public extension Guide {
         guideWeightSegmentBucket.build(guideWeightSegments: guideWeightSegments,
                                         guideWeightSegmentCount: guideWeightSegmentCount)
         currentHashSpline.change()
-        if Guide.DEBUG_FLOW {
-            print("(FLOW) {W-Ring \(ObjectIdentifier(self))} CRUNCHED Spline: \(currentHashSpline)")
-        }
     }
     
     private func refreshOutline(jiggleCenter: Point,
@@ -327,10 +316,6 @@ public extension Guide {
                                   jiggleScale: jiggleScale,
                                   jiggleRotation: jiggleRotation,
                                   lineThicknessType: lineThicknessType)
-        
-        if Guide.DEBUG_FLOW {
-            print("(FLOW) {W-Ring \(ObjectIdentifier(self))} CRUNCHED Outline: \(currentHashOutline)")
-        }
     }
     
     func refreshSolidLineBuffersStandard(worldScaleStandard: Float,
@@ -470,10 +455,6 @@ public extension Guide {
                                                   jiggleScale: jiggleScale,
                                                   jiggleRotation: jiggleRotation,
                                                   lineThicknessType: lineThicknessType)
-        
-        if Guide.DEBUG_FLOW {
-            print("(FLOW) {W-Ring \(ObjectIdentifier(self))} CRUNCHED Solid Line (Standard): \(currentHashSolidLineBufferStandard)")
-        }
     }
     
     func refreshSolidLineBuffersPrecise(worldScalePrecise: Float,
@@ -542,19 +523,5 @@ public extension Guide {
                                                  jiggleScale: jiggleScale,
                                                  jiggleRotation: jiggleRotation,
                                                  lineThicknessType: lineThicknessType)
-        
-        if Guide.DEBUG_FLOW {
-            print("(FLOW) {W-Ring \(ObjectIdentifier(self))} CRUNCHED Solid Line (Precise): \(currentHashSolidLineBufferPrecise)")
-        }
-        
     }
-    
-    private func applySolidLineFillColor_Selected(guideCount: Int, weightDepthIndex: Int, isDarkMode: Bool) {
-        
-    }
-    
-    private func applySolidLineFillColor_Unselected(guideCount: Int, weightDepthIndex: Int, isDarkMode: Bool) {
-        
-    }
-    
 }

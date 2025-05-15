@@ -24,8 +24,6 @@ public class Guide: WeightCurveControlPointOwning {
         
     }
     
-    static let DEBUG_FLOW = false
-    
     public func dispose() {
         
         guideControlPoints.removeAll(keepingCapacity: false)
@@ -71,7 +69,7 @@ public class Guide: WeightCurveControlPointOwning {
         processPoints[processPointCount] = point
         processPointCount += 1
     }
-        
+    
     public func purgeProcessPoints() {
         for processPointIndex in 0..<processPointCount {
             GuidePartsFactory.shared.depositDirectedWeightPoint(processPoints[processPointIndex])
@@ -96,7 +94,7 @@ public class Guide: WeightCurveControlPointOwning {
     public let solidLineBufferRegularBloom = SolidLineBuffer<Shape3DVertex, UniformsShapeVertex, UniformsShapeFragment>(sentinelNode: .init())
     public let solidLineBufferRegularStroke = SolidLineBuffer<Shape2DVertex, UniformsShapeVertex, UniformsShapeFragment>(sentinelNode: .init())
     public let solidLineBufferRegularFill = SolidLineBuffer<Shape2DVertex, UniformsShapeVertex, UniformsShapeFragment>(sentinelNode: .init())
-
+    
     public let solidLineBufferPreciseBloom = SolidLineBuffer<Shape3DVertex, UniformsShapeVertex, UniformsShapeFragment>(sentinelNode: .init())
     public let solidLineBufferPreciseStroke = SolidLineBuffer<Shape2DVertex, UniformsShapeVertex, UniformsShapeFragment>(sentinelNode: .init())
     public let solidLineBufferPreciseFill = SolidLineBuffer<Shape2DVertex, UniformsShapeVertex, UniformsShapeFragment>(sentinelNode: .init())
@@ -108,7 +106,7 @@ public class Guide: WeightCurveControlPointOwning {
     public var isBroken = false
     public var isGuideClockwise = false
     
-    var spline = ManualSpline()
+    var spline = FancySpline()
     let borderTool = BorderTool()
     
     public let guideWeightSegmentBucket = GuideWeightSegmentBucket()
@@ -174,9 +172,9 @@ public class Guide: WeightCurveControlPointOwning {
     public var guideControlPoints = [GuideControlPoint]()
     public var guideControlPointCount = 0
     @MainActor public func addGuideControlPoint(x: Float,
-                                         y: Float,
-                                         jiggleDocument: some SelectedGuidePointListeningConforming,
-                                         ignoreRealize: Bool) {
+                                                y: Float,
+                                                jiggleDocument: some SelectedGuidePointListeningConforming,
+                                                ignoreRealize: Bool) {
         let guideControlPoint = GuidePartsFactory.shared.withdrawGuideControlPoint()
         guideControlPoint.x = x
         guideControlPoint.y = y
@@ -191,22 +189,28 @@ public class Guide: WeightCurveControlPointOwning {
         let guideControlPoint = GuidePartsFactory.shared.withdrawGuideControlPoint()
         guideControlPoint.x = directedWeightPoint.x
         guideControlPoint.y = directedWeightPoint.y
-        guideControlPoint.isUnifiedTan = directedWeightPoint.isUnifiedTan
-        guideControlPoint.isManualTanHandleEnabled = directedWeightPoint.isManualTanHandleEnabled
-        if directedWeightPoint.isManualTanHandleEnabled {
+        
+        guideControlPoint.isManualTanHandleEnabledIn = directedWeightPoint.isManualTanHandleEnabledIn
+        guideControlPoint.isManualTanHandleEnabledOut = directedWeightPoint.isManualTanHandleEnabledOut
+        
+        if directedWeightPoint.isManualTanHandleEnabledIn {
             guideControlPoint.tanDirectionIn = directedWeightPoint.tanDirectionIn
-            guideControlPoint.tanDirectionOut = directedWeightPoint.tanDirectionOut
             guideControlPoint.tanMagnitudeIn = directedWeightPoint.tanMagnitudeIn
+        }
+        
+        if directedWeightPoint.isManualTanHandleEnabledOut {
+            guideControlPoint.tanDirectionOut = directedWeightPoint.tanDirectionOut
             guideControlPoint.tanMagnitudeOut = directedWeightPoint.tanMagnitudeOut
         }
+        
         addGuideControlPoint(guideControlPoint: guideControlPoint,
                              jiggleDocument: jiggleDocument,
                              ignoreRealize: ignoreRealize)
     }
     
     @MainActor public func addGuideControlPoint(guideControlPoint: GuideControlPoint,
-                                         jiggleDocument: some SelectedGuidePointListeningConforming,
-                                         ignoreRealize: Bool) {
+                                                jiggleDocument: some SelectedGuidePointListeningConforming,
+                                                ignoreRealize: Bool) {
         while guideControlPoints.count <= guideControlPointCount {
             guideControlPoints.append(guideControlPoint)
         }
@@ -221,9 +225,9 @@ public class Guide: WeightCurveControlPointOwning {
     }
     
     @MainActor public func switchSelectedGuideControlPoint(newSelectedGuideControlPointIndex: Int,
-                                                    selectedTanType: TanTypeOrNone,
-                                                    jiggleDocument: some SelectedGuidePointListeningConforming,
-                                                    ignoreRealize: Bool) {
+                                                           selectedTanType: TanTypeOrNone,
+                                                           jiggleDocument: some SelectedGuidePointListeningConforming,
+                                                           ignoreRealize: Bool) {
         selectedGuideControlPointIndex = newSelectedGuideControlPointIndex
         if newSelectedGuideControlPointIndex >= 0 &&
             newSelectedGuideControlPointIndex < guideControlPointCount {
@@ -235,10 +239,10 @@ public class Guide: WeightCurveControlPointOwning {
     }
     
     @MainActor public func insertGuideControlPoint(x: Float,
-                                 y: Float,
-                                 index: Int,
-                                 jiggleDocument: some SelectedGuidePointListeningConforming,
-                                 ignoreRealize: Bool) -> GuideControlPoint {
+                                                   y: Float,
+                                                   index: Int,
+                                                   jiggleDocument: some SelectedGuidePointListeningConforming,
+                                                   ignoreRealize: Bool) -> GuideControlPoint {
         let guideControlPoint = GuidePartsFactory.shared.withdrawGuideControlPoint()
         guideControlPoint.x = x
         guideControlPoint.y = y
@@ -248,11 +252,25 @@ public class Guide: WeightCurveControlPointOwning {
                                 ignoreRealize: ignoreRealize)
         return guideControlPoint
     }
-        
+    
+    @MainActor public func insertGuideControlPoint(controlPointData: ControlPointData,
+                                                   
+                                                   index: Int,
+                                                   jiggleDocument: some SelectedGuidePointListeningConforming,
+                                                   ignoreRealize: Bool) -> GuideControlPoint {
+        let guideControlPoint = GuidePartsFactory.shared.withdrawGuideControlPoint()
+        guideControlPoint.setData(controlPointData)
+        insertGuideControlPoint(newGuideControlPoint: guideControlPoint,
+                                index: index,
+                                jiggleDocument: jiggleDocument,
+                                ignoreRealize: ignoreRealize)
+        return guideControlPoint
+    }
+    
     @MainActor public func insertGuideControlPoint(newGuideControlPoint: GuideControlPoint,
-                                 index: Int,
-                                 jiggleDocument: some SelectedGuidePointListeningConforming,
-                                            ignoreRealize: Bool) {
+                                                   index: Int,
+                                                   jiggleDocument: some SelectedGuidePointListeningConforming,
+                                                   ignoreRealize: Bool) {
         while guideControlPoints.count <= guideControlPointCount {
             guideControlPoints.append(newGuideControlPoint)
         }
@@ -272,8 +290,8 @@ public class Guide: WeightCurveControlPointOwning {
     }
     
     @MainActor public func removeGuideControlPoint(guideControlPoint: GuideControlPoint,
-                                            jiggleDocument: some SelectedGuidePointListeningConforming,
-                                            ignoreRealize: Bool) -> Bool {
+                                                   jiggleDocument: some SelectedGuidePointListeningConforming,
+                                                   ignoreRealize: Bool) -> Bool {
         for checkIndex in 0..<guideControlPointCount {
             if guideControlPoints[checkIndex] === guideControlPoint {
                 if removeGuideControlPoint(index: checkIndex,
@@ -297,8 +315,8 @@ public class Guide: WeightCurveControlPointOwning {
     @discardableResult
     @MainActor
     public func removeGuideControlPoint(index: Int,
-                                 jiggleDocument: some SelectedGuidePointListeningConforming,
-                                 ignoreRealize: Bool) -> Bool {
+                                        jiggleDocument: some SelectedGuidePointListeningConforming,
+                                        ignoreRealize: Bool) -> Bool {
         if index >= 0 && index < guideControlPointCount {
             let guideControlPoint = guideControlPoints[index]
             GuidePartsFactory.shared.depositGuideControlPoint(guideControlPoint)
@@ -309,7 +327,7 @@ public class Guide: WeightCurveControlPointOwning {
                 guideControlPointIndex += 1
             }
             guideControlPointCount -= 1
-
+            
             var newSelectedGuideControlPointIndex = selectedGuideControlPointIndex
             if newSelectedGuideControlPointIndex >= guideControlPointCount {
                 newSelectedGuideControlPointIndex = guideControlPointCount - 1
@@ -367,7 +385,7 @@ public class Guide: WeightCurveControlPointOwning {
         outlineGuideWeightSegments[outlineGuideWeightSegmentCount] = guideWeightSegment
         outlineGuideWeightSegmentCount += 1
     }
-
+    
     public func purgeOutlineGuideWeightSegments() {
         for guideWeightSegmentsIndex in 0..<outlineGuideWeightSegmentCount {
             GuidePartsFactory.shared.depositGuideWeightSegment(outlineGuideWeightSegments[guideWeightSegmentsIndex])
@@ -384,7 +402,7 @@ public class Guide: WeightCurveControlPointOwning {
         outlineGuideWeightPoints[outlineGuideWeightPointCount] = guideWeightPoint
         outlineGuideWeightPointCount += 1
     }
-
+    
     public func purgeOutlineGuideWeightPoints() {
         for guideWeightPointsIndex in 0..<outlineGuideWeightPointCount {
             GuidePartsFactory.shared.depositGuideWeightPoint(outlineGuideWeightPoints[guideWeightPointsIndex])
@@ -518,4 +536,3 @@ public class Guide: WeightCurveControlPointOwning {
     }
     
 }
-

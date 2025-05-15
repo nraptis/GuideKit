@@ -45,9 +45,9 @@ public class GuidePartsFactory {
             guideControlPoints.append(guideControlPoint)
         }
         
-        guideControlPoint.isManualTanHandleEnabled = false
-        guideControlPoint.isUnifiedTan = true
-        guideControlPoint.isTanHandleEverModifiedByUserDrag = false
+        guideControlPoint.isManualTanHandleEnabledIn = false
+        guideControlPoint.isManualTanHandleEnabledOut = false
+        guideControlPoint.isTanHandleModified = false
         guideControlPoint.selectedTanType = .none
         
         guideControlPoints[guideControlPointCount] = guideControlPoint
